@@ -1,0 +1,3 @@
+MUL AX,1
+INC BX
+NOP

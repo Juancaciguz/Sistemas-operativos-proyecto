@@ -1,0 +1,4 @@
+3
+PID:1, PC=0, AX=0, BX=0, CX=0, Quantum=3
+PID:2, PC=0, AX=0, BX=0, CX=0, Quantum=2
+PID:3, PC=0, AX=0, BX=0, CX=0, Quantum=4

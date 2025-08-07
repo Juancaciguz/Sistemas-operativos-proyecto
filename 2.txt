@@ -1,0 +1,3 @@
+ADD AX,1
+SUB CX,BX
+NOP
