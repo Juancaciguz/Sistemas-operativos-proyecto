@@ -13,16 +13,16 @@ typedef struct {
     int quantum;
     char estado[10];
     int tiempo_restante;
-    char instrucciones[MAX_INSTRUCCIONES][LINEA_MAX];// array[20][100]
+    char instrucciones[MAX_INSTRUCCIONES][LINEA_MAX];
     int num_instrucciones;
 } Proceso;
 
-void imprimir_proceso(Proceso p, FILE *log_file) {
-    fprintf(log_file, "  PID: %d, Estado: %s, PC: %d, AX: %d, BX: %d, CX: %d\n",
+void imprimir_proceso(Proceso p) {
+    printf("  PID: %d, Estado: %s, PC: %d, AX: %d, BX: %d, CX: %d\n",
            p.pid, p.estado, p.pc, p.ax, p.bx, p.cx);
 }
 
-void ejecutar_instruccion(Proceso *p, FILE *log_file) {
+void ejecutar_instruccion(Proceso *p) {
     char instruccion_copia[LINEA_MAX];
     strcpy(instruccion_copia, p->instrucciones[p->pc]);
 
@@ -40,17 +40,12 @@ void ejecutar_instruccion(Proceso *p, FILE *log_file) {
         else if (strcmp(op1_str, "CX") == 0) op1_reg = &p->cx;
         else op2_val = atoi(op1_str);
     }
+    
     if (op2_str != NULL) {
         if (strcmp(op2_str, "AX") == 0) op2_reg = &p->ax;
         else if (strcmp(op2_str, "BX") == 0) op2_reg = &p->bx;
         else if (strcmp(op2_str, "CX") == 0) op2_reg = &p->cx;
         else op2_val = atoi(op2_str);
-    }
-
-    if (strcmp(comando, "CANCEL") == 0) {
-        strcpy(p->estado, "Cancelado");
-        fprintf(log_file, "  > Proceso %d cancelado por instruccion CANCEL.\n", p->pid);
-        return;
     }
 
     if (strcmp(comando, "INC") == 0) {
@@ -90,41 +85,31 @@ int main() {
     int i;
     char linea[LINEA_MAX];
 
-    FILE *log_file = fopen("simulacion.log", "w");
-    if (log_file == NULL) {
-        printf("Error: No se pudo abrir el archivo de log.\n");
-        return 1;
-    }
-
     FILE *archivo_procesos = fopen("procesos.txt", "r");
     if (archivo_procesos == NULL) {
-        fprintf(log_file, "No se puede abrir el archivo procesos.txt.\n");
-        fclose(log_file);
+        printf("No se puede abrir el archivo procesos.txt.\n");
         return 1;
     }
 
     if (fgets(linea, LINEA_MAX, archivo_procesos) == NULL) {
-        fprintf(log_file, "Archivo vacio o no se puede leer la cantidad de procesos.\n");
+        printf("Archivo vacio o no se puede leer la cantidad de procesos.\n");
         fclose(archivo_procesos);
-        fclose(log_file);
         return 1;
     }
     num_procesos = atoi(linea);
 
     for (i = 0; i < num_procesos; i++) {
         if (fgets(linea, LINEA_MAX, archivo_procesos) == NULL) {
-            fprintf(log_file, "Faltan datos para el proceso %d.\n", i + 1);
+            printf("Faltan datos para el proceso %d.\n", i + 1);
             fclose(archivo_procesos);
-            fclose(log_file);
             return 1;
         }
 
         if (sscanf(linea, "PID:%d, PC=%d, AX=%d, BX=%d, CX=%d, Quantum=%d",
                    &procesos[i].pid, &procesos[i].pc, &procesos[i].ax,
                    &procesos[i].bx, &procesos[i].cx, &procesos[i].quantum) != 6) {
-            fprintf(log_file, "No estan todos los datos requeridos %d.\n", i + 1);
+            printf("No estan todos los datos requeridos %d.\n", i + 1);
             fclose(archivo_procesos);
-            fclose(log_file);
             return 1;
         }
 
@@ -132,9 +117,8 @@ int main() {
         sprintf(nombre_instrucciones, "%d.txt", procesos[i].pid);
         FILE *archivo_instrucciones = fopen(nombre_instrucciones, "r");
         if (archivo_instrucciones == NULL) {
-            fprintf(log_file, "No se pudo abrir el archivo de instrucciones %s\n", nombre_instrucciones);
+            printf("No se pudo abrir el archivo de instrucciones %s\n", nombre_instrucciones);
             fclose(archivo_procesos);
-            fclose(log_file);
             return 1;
         }
 
@@ -151,86 +135,80 @@ int main() {
     }
     fclose(archivo_procesos);
     
-    fprintf(log_file, "Procesos:\n");
+    printf("Procesos:\n");
     for (i = 0; i < num_procesos; i++) {
-        imprimir_proceso(procesos[i], log_file);
+        imprimir_proceso(procesos[i]);
     }
 
-    fprintf(log_file, "--- Round Robin ---\n");
+    printf("--- Round Robin ---\n");
 
     int procesos_terminados = 0;
     int proceso_actual_idx = 0;
     int tiempo_total = 0;
     
     while (procesos_terminados < num_procesos) {
-        // Restaurar procesos cancelados temporalmente
-        for (i = 0; i < num_procesos; i++) {
-            if (strcmp(procesos[i].estado, "Cancelado") == 0 && procesos[i].pc < procesos[i].num_instrucciones) {
-                strcpy(procesos[i].estado, "Listo");
-            }
-        }
-
         int inicio_busqueda = proceso_actual_idx;
-        // Saltar procesos terminados
         while (strcmp(procesos[proceso_actual_idx].estado, "Terminado") == 0) {
             proceso_actual_idx = (proceso_actual_idx + 1) % num_procesos;
             if (proceso_actual_idx == inicio_busqueda) {
                 break;
             }
         }
-
+        
         Proceso *p = &procesos[proceso_actual_idx];
 
         if (strcmp(p->estado, "Terminado") != 0) {
-            fprintf(log_file, "\n--- Tiempo de simulacion: %d, Id proceso: %d ---\n", tiempo_total, p->pid);
+            printf("\n--- Tiempo de simulacion: %d, Id proceso: %d ---\n", tiempo_total, p->pid);
             strcpy(p->estado, "Ejecutando");
 
-            int instrucciones_ejecutadas = 0;
-            while (instrucciones_ejecutadas < p->quantum &&
-                   p->pc < p->num_instrucciones &&
-                   strcmp(p->estado, "Cancelado") != 0 &&
-                   strcmp(p->estado, "Terminado") != 0) {
-
-                fprintf(log_file, "  > Ejecutando instruccion: %s\n", p->instrucciones[p->pc]);
+            int quantum_ejecutado = 0;
+            while (quantum_ejecutado < p->quantum && p->pc < p->num_instrucciones && strcmp(p->estado, "Terminado") != 0) {
+                printf("  > Ejecutando instruccion: %s\n", p->instrucciones[p->pc]);
+                
                 int pc_anterior = p->pc;
-                ejecutar_instruccion(p, log_file);
+                ejecutar_instruccion(p);
 
-                // Si fue cancelado, no avanzar PC ni tiempo
-                if (strcmp(p->estado, "Cancelado") == 0) {
-                    fprintf(log_file, "\nProceso %d ha sido cancelado temporalmente y pasará al siguiente proceso.\n", p->pid);
-                    break;
-                } else if (strncmp(p->instrucciones[pc_anterior], "JMP", 3) != 0) {
+                if (strncmp(p->instrucciones[pc_anterior], "JMP", 3) != 0) {
                     p->pc++;
                 }
 
-                instrucciones_ejecutadas++;
-                tiempo_total++;
+                quantum_ejecutado++;
+                p->tiempo_restante--;
 
-                fprintf(log_file, "  > Estado despues de la instruccion: ");
-                imprimir_proceso(*p, log_file);
+                printf("  > Estado despues de la instruccion: ");
+                imprimir_proceso(*p);
 
                 if (p->pc >= p->num_instrucciones) {
                     strcpy(p->estado, "Terminado");
                     procesos_terminados++;
-                    fprintf(log_file, "\nProceso %d ha terminado su ejecucion.\n", p->pid);
-                    break;
+                    printf("\nProceso %d ha terminado su ejecucion.\n", p->pid);
                 }
             }
 
-            // Solo cambio de contexto si no terminó ni fue cancelado
-            if (strcmp(p->estado, "Terminado") != 0 && strcmp(p->estado, "Cancelado") != 0) {
-                fprintf(log_file, "\n[Cambio de contexto]\n");
-                fprintf(log_file, "Guardando estado de Proceso %d: PC=%d, AX=%d, BX=%d, CX=%d\n",
-                        p->pid, p->pc, p->ax, p->bx, p->cx);
+            if (strcmp(p->estado, "Terminado") != 0) {
+                printf("\n[Cambio de contexto]\n");
+                printf("Guardando estado de Proceso %d: PC=%d, AX=%d, BX=%d, CX=%d\n", p->pid, p->pc, p->ax, p->bx, p->cx);
 
+                p->tiempo_restante = p->quantum;
                 strcpy(p->estado, "Listo");
+
+                int siguiente_proceso_idx = (proceso_actual_idx + 1) % num_procesos;
+                while (strcmp(procesos[siguiente_proceso_idx].estado, "Terminado") == 0 && procesos_terminados < num_procesos) {
+                    siguiente_proceso_idx = (siguiente_proceso_idx + 1) % num_procesos;
+                }
+
+                if (strcmp(procesos[siguiente_proceso_idx].estado, "Terminado") != 0) {
+                    Proceso* siguiente_proceso = &procesos[siguiente_proceso_idx];
+                    printf("Cargando estado de Proceso %d: PC=%d, AX=%d, BX=%d, CX=%d\n",
+                           siguiente_proceso->pid, siguiente_proceso->pc, siguiente_proceso->ax, siguiente_proceso->bx, siguiente_proceso->cx);
+                }
             }
         }
-
+        
         proceso_actual_idx = (proceso_actual_idx + 1) % num_procesos;
+        tiempo_total++;
     }
 
-    fprintf(log_file, "\n--- Simulacion finalizada: Todos los procesos han terminado ---\n");
-    fclose(log_file);
+    printf("\n--- Simulacion finalizada: Todos los procesos han terminado ---\n");
     return 0;
 }

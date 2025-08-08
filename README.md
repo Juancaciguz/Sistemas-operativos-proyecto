@@ -2,6 +2,10 @@
 
 Integrantes : Juan Carlos Citelly Guzmán y Juan Manuel Zapata Olaya
 
+Requisitos:
+1. Compilador gcc.
+
+
 Pasos para compilar:
 
 1. Desde una terminal de linux dirigirse a la ubicacion del proyecto
