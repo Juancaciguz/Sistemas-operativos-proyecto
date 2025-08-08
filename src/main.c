@@ -22,28 +22,24 @@ void imprimir_proceso(Proceso p, FILE *log_file) {
            p.pid, p.estado, p.pc, p.ax, p.bx, p.cx);
 }
 
-void ejecutar_instruccion(Proceso *p) {
+void ejecutar_instruccion(Proceso *p, FILE *log_file) {
     char instruccion_copia[LINEA_MAX];
-    strcpy(instruccion_copia, p->instrucciones[p->pc]); // strcpy(destino, origen)
+    strcpy(instruccion_copia, p->instrucciones[p->pc]);
 
-    char *comando = strtok(instruccion_copia, " \t\n"); //Primer fragmento de texto
-    char *op1_str = strtok(NULL, " ,\t\n"); //Segundo fragmento de texto separados por espacio o comas
+    char *comando = strtok(instruccion_copia, " \t\n");
+    char *op1_str = strtok(NULL, " ,\t\n");
     char *op2_str = strtok(NULL, " ,\t\n");
     
     int *op1_reg = NULL;
     int *op2_reg = NULL;
     int op2_val = 0; 
 
-    // Obtener la dirección del primer operando (registro)
     if (op1_str != NULL) {
-        if (strcmp(op1_str, "AX") == 0) op1_reg = &p->ax; //compara las dos cadenas y debe retornar 0 si son iguales
-        //op1_reg se le asigna la direccion de memoria de ax de este proceso p, mas tarde va a servir para hacer operaciones sobre op1_reg
+        if (strcmp(op1_str, "AX") == 0) op1_reg = &p->ax;
         else if (strcmp(op1_str, "BX") == 0) op1_reg = &p->bx; 
         else if (strcmp(op1_str, "CX") == 0) op1_reg = &p->cx;
-        else op2_val = atoi(op1_str); //Esto es por si el operando es un numero
+        else op2_val = atoi(op1_str);
     }
-    
-    // Obtener la dirección o valor del segundo operando
     if (op2_str != NULL) {
         if (strcmp(op2_str, "AX") == 0) op2_reg = &p->ax;
         else if (strcmp(op2_str, "BX") == 0) op2_reg = &p->bx;
@@ -51,8 +47,14 @@ void ejecutar_instruccion(Proceso *p) {
         else op2_val = atoi(op2_str);
     }
 
+    if (strcmp(comando, "CANCEL") == 0) {
+        strcpy(p->estado, "Cancelado");
+        fprintf(log_file, "  > Proceso %d cancelado por instruccion CANCEL.\n", p->pid);
+        return;
+    }
+
     if (strcmp(comando, "INC") == 0) {
-        if (op1_reg != NULL) (*op1_reg)++; // trae el valor de la direccion de memoria y le suma 1
+        if (op1_reg != NULL) (*op1_reg)++;
     } else if (strcmp(comando, "ADD") == 0) {
         if (op1_reg != NULL && op2_reg != NULL) {
             (*op1_reg) += (*op2_reg);
@@ -77,7 +79,7 @@ void ejecutar_instruccion(Proceso *p) {
                 (*op1_reg) *= atoi(op2_str);
             }
         }
-    } else if (strcmp(comando, "JMP") == 0) { //recuerda que op2_val en este punto va a hacer que la siguiente instruccion sea el numero indicando la linea
+    } else if (strcmp(comando, "JMP") == 0) {
         p->pc = op2_val;
     }
 }
@@ -161,63 +163,71 @@ int main() {
     int tiempo_total = 0;
     
     while (procesos_terminados < num_procesos) {
+        // Restaurar procesos cancelados temporalmente
+        for (i = 0; i < num_procesos; i++) {
+            if (strcmp(procesos[i].estado, "Cancelado") == 0 && procesos[i].pc < procesos[i].num_instrucciones) {
+                strcpy(procesos[i].estado, "Listo");
+            }
+        }
+
         int inicio_busqueda = proceso_actual_idx;
+        // Saltar procesos terminados
         while (strcmp(procesos[proceso_actual_idx].estado, "Terminado") == 0) {
             proceso_actual_idx = (proceso_actual_idx + 1) % num_procesos;
             if (proceso_actual_idx == inicio_busqueda) {
                 break;
             }
         }
-        
+
         Proceso *p = &procesos[proceso_actual_idx];
 
         if (strcmp(p->estado, "Terminado") != 0) {
             fprintf(log_file, "\n--- Tiempo de simulacion: %d, Id proceso: %d ---\n", tiempo_total, p->pid);
             strcpy(p->estado, "Ejecutando");
-            
-            if (p->pc < p->num_instrucciones) {
-                fprintf(log_file, "  > Ejecutando instruccion: %s\n", p->instrucciones[p->pc]);
-                
-                int pc_anterior = p->pc;
-                ejecutar_instruccion(p);
 
-                if (strncmp(p->instrucciones[pc_anterior], "JMP", 3) != 0) {
+            int instrucciones_ejecutadas = 0;
+            while (instrucciones_ejecutadas < p->quantum &&
+                   p->pc < p->num_instrucciones &&
+                   strcmp(p->estado, "Cancelado") != 0 &&
+                   strcmp(p->estado, "Terminado") != 0) {
+
+                fprintf(log_file, "  > Ejecutando instruccion: %s\n", p->instrucciones[p->pc]);
+                int pc_anterior = p->pc;
+                ejecutar_instruccion(p, log_file);
+
+                // Si fue cancelado, no avanzar PC ni tiempo
+                if (strcmp(p->estado, "Cancelado") == 0) {
+                    fprintf(log_file, "\nProceso %d ha sido cancelado temporalmente y pasará al siguiente proceso.\n", p->pid);
+                    break;
+                } else if (strncmp(p->instrucciones[pc_anterior], "JMP", 3) != 0) {
                     p->pc++;
                 }
-            }
-            
-            p->tiempo_restante--;
-            
-            fprintf(log_file, "  > Estado despues de la instruccion: ");
-            imprimir_proceso(*p, log_file);
 
-            if (p->pc >= p->num_instrucciones) {
-                strcpy(p->estado, "Terminado");
-                procesos_terminados++;
-                fprintf(log_file, "\nProceso %d ha terminado su ejecucion.\n", p->pid);
+                instrucciones_ejecutadas++;
+                tiempo_total++;
+
+                fprintf(log_file, "  > Estado despues de la instruccion: ");
+                imprimir_proceso(*p, log_file);
+
+                if (p->pc >= p->num_instrucciones) {
+                    strcpy(p->estado, "Terminado");
+                    procesos_terminados++;
+                    fprintf(log_file, "\nProceso %d ha terminado su ejecucion.\n", p->pid);
+                    break;
+                }
             }
-            else if (p->tiempo_restante == 0) {
+
+            // Solo cambio de contexto si no terminó ni fue cancelado
+            if (strcmp(p->estado, "Terminado") != 0 && strcmp(p->estado, "Cancelado") != 0) {
                 fprintf(log_file, "\n[Cambio de contexto]\n");
-                fprintf(log_file, "Guardando estado de Proceso %d: PC=%d, AX=%d, BX=%d, CX=%d\n", p->pid, p->pc, p->ax, p->bx, p->cx);
-                
-                p->tiempo_restante = p->quantum;
+                fprintf(log_file, "Guardando estado de Proceso %d: PC=%d, AX=%d, BX=%d, CX=%d\n",
+                        p->pid, p->pc, p->ax, p->bx, p->cx);
+
                 strcpy(p->estado, "Listo");
-                
-                int siguiente_proceso_idx = (proceso_actual_idx + 1) % num_procesos;
-                while (strcmp(procesos[siguiente_proceso_idx].estado, "Terminado") == 0 && procesos_terminados < num_procesos) {
-                    siguiente_proceso_idx = (siguiente_proceso_idx + 1) % num_procesos;
-                }
-                
-                if (strcmp(procesos[siguiente_proceso_idx].estado, "Terminado") != 0) {
-                    Proceso* siguiente_proceso = &procesos[siguiente_proceso_idx];
-                    fprintf(log_file, "Cargando estado de Proceso %d: PC=%d, AX=%d, BX=%d, CX=%d\n",
-                           siguiente_proceso->pid, siguiente_proceso->pc, siguiente_proceso->ax, siguiente_proceso->bx, siguiente_proceso->cx);
-                }
             }
         }
-        
+
         proceso_actual_idx = (proceso_actual_idx + 1) % num_procesos;
-        tiempo_total++;
     }
 
     fprintf(log_file, "\n--- Simulacion finalizada: Todos los procesos han terminado ---\n");

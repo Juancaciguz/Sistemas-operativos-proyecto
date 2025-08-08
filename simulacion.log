@@ -1,0 +1,49 @@
+Procesos:
+  PID: 1, Estado: Listo, PC: 0, AX: 0, BX: 0, CX: 0
+  PID: 2, Estado: Listo, PC: 0, AX: 0, BX: 0, CX: 0
+  PID: 3, Estado: Listo, PC: 0, AX: 0, BX: 0, CX: 0
+--- Round Robin ---
+
+--- Tiempo de simulacion: 0, Id proceso: 1 ---
+  > Ejecutando instruccion: INC AX
+  > Estado despues de la instruccion:   PID: 1, Estado: Ejecutando, PC: 1, AX: 0, BX: 0, CX: 0
+  > Ejecutando instruccion: ADD BX, 2
+  > Estado despues de la instruccion:   PID: 1, Estado: Ejecutando, PC: 2, AX: 0, BX: 2, CX: 0
+  > Ejecutando instruccion: INC CX
+  > Estado despues de la instruccion:   PID: 1, Estado: Ejecutando, PC: 3, AX: 0, BX: 2, CX: 0
+
+[Cambio de contexto]
+Guardando estado de Proceso 1: PC=3, AX=0, BX=2, CX=0
+
+--- Tiempo de simulacion: 3, Id proceso: 2 ---
+  > Ejecutando instruccion: ADD AX,1
+  > Estado despues de la instruccion:   PID: 2, Estado: Ejecutando, PC: 1, AX: 1, BX: 0, CX: 0
+  > Ejecutando instruccion: SUB CX,BX
+  > Estado despues de la instruccion:   PID: 2, Estado: Ejecutando, PC: 2, AX: 1, BX: 0, CX: 0
+
+[Cambio de contexto]
+Guardando estado de Proceso 2: PC=2, AX=1, BX=0, CX=0
+
+--- Tiempo de simulacion: 5, Id proceso: 3 ---
+  > Ejecutando instruccion: MUL AX,1
+  > Estado despues de la instruccion:   PID: 3, Estado: Ejecutando, PC: 1, AX: 0, BX: 0, CX: 0
+  > Ejecutando instruccion: INC BX
+  > Estado despues de la instruccion:   PID: 3, Estado: Ejecutando, PC: 2, AX: 0, BX: 0, CX: 0
+  > Ejecutando instruccion: NOP
+  > Estado despues de la instruccion:   PID: 3, Estado: Ejecutando, PC: 3, AX: 0, BX: 0, CX: 0
+
+Proceso 3 ha terminado su ejecucion.
+
+--- Tiempo de simulacion: 8, Id proceso: 1 ---
+  > Ejecutando instruccion: ADD AX, 5
+  > Estado despues de la instruccion:   PID: 1, Estado: Ejecutando, PC: 4, AX: 5, BX: 2, CX: 0
+
+Proceso 1 ha terminado su ejecucion.
+
+--- Tiempo de simulacion: 9, Id proceso: 2 ---
+  > Ejecutando instruccion: NOP
+  > Estado despues de la instruccion:   PID: 2, Estado: Ejecutando, PC: 3, AX: 1, BX: 0, CX: 0
+
+Proceso 2 ha terminado su ejecucion.
+
+--- Simulacion finalizada: Todos los procesos han terminado ---
