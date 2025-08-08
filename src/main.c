@@ -13,7 +13,7 @@ typedef struct {
     int quantum;
     char estado[10];
     int tiempo_restante;
-    char instrucciones[MAX_INSTRUCCIONES][LINEA_MAX];
+    char instrucciones[MAX_INSTRUCCIONES][LINEA_MAX];// array[20][100]
     int num_instrucciones;
 } Proceso;
 
@@ -26,20 +26,21 @@ void ejecutar_instruccion(Proceso *p) {
     char instruccion_copia[LINEA_MAX];
     strcpy(instruccion_copia, p->instrucciones[p->pc]); // strcpy(destino, origen)
 
-    char *comando = strtok(instruccion_copia, " \t\n");
-    char *op1_str = strtok(NULL, " ,\t\n");
+    char *comando = strtok(instruccion_copia, " \t\n"); //Primer fragmento de texto
+    char *op1_str = strtok(NULL, " ,\t\n"); //Segundo fragmento de texto separados por espacio o comas
     char *op2_str = strtok(NULL, " ,\t\n");
     
     int *op1_reg = NULL;
     int *op2_reg = NULL;
-    int op2_val = 0;
+    int op2_val = 0; 
 
     // Obtener la dirección del primer operando (registro)
     if (op1_str != NULL) {
-        if (strcmp(op1_str, "AX") == 0) op1_reg = &p->ax;
-        else if (strcmp(op1_str, "BX") == 0) op1_reg = &p->bx;
+        if (strcmp(op1_str, "AX") == 0) op1_reg = &p->ax; //compara las dos cadenas y debe retornar 0 si son iguales
+        //op1_reg se le asigna la direccion de memoria de ax de este proceso p, mas tarde va a servir para hacer operaciones sobre op1_reg
+        else if (strcmp(op1_str, "BX") == 0) op1_reg = &p->bx; 
         else if (strcmp(op1_str, "CX") == 0) op1_reg = &p->cx;
-        else op2_val = atoi(op1_str);
+        else op2_val = atoi(op1_str); //Esto es por si el operando es un numero
     }
     
     // Obtener la dirección o valor del segundo operando
@@ -51,7 +52,7 @@ void ejecutar_instruccion(Proceso *p) {
     }
 
     if (strcmp(comando, "INC") == 0) {
-        if (op1_reg != NULL) (*op1_reg)++;
+        if (op1_reg != NULL) (*op1_reg)++; // trae el valor de la direccion de memoria y le suma 1
     } else if (strcmp(comando, "ADD") == 0) {
         if (op1_reg != NULL && op2_reg != NULL) {
             (*op1_reg) += (*op2_reg);
@@ -76,7 +77,7 @@ void ejecutar_instruccion(Proceso *p) {
                 (*op1_reg) *= atoi(op2_str);
             }
         }
-    } else if (strcmp(comando, "JMP") == 0) {
+    } else if (strcmp(comando, "JMP") == 0) { //recuerda que op2_val en este punto va a hacer que la siguiente instruccion sea el numero indicando la linea
         p->pc = op2_val;
     }
 }
@@ -89,20 +90,20 @@ int main() {
 
     FILE *archivo_procesos = fopen("procesos.txt", "r");
     if (archivo_procesos == NULL) {
-        printf("Error: No se pudo abrir el archivo procesos.txt.\n");
+        printf("No se puede abrir el archivo procesos.txt.\n");
         return 1;
     }
 
-    if (fgets(linea, LINEA_MAX, archivo_procesos) == NULL) {
-        printf("Error: Archivo vacio o no se pudo leer la cantidad de procesos.\n");
+    if (fgets(linea, LINEA_MAX, archivo_procesos) == NULL) { //aqui se esta guardando el numero de procesos, deberiamos ponerlo en otra parte
+        printf("Archivo vacio o no se puede leer la cantidad de procesos.\n");
         fclose(archivo_procesos);
         return 1;
     }
     num_procesos = atoi(linea);
 
     for (i = 0; i < num_procesos; i++) {
-        if (fgets(linea, LINEA_MAX, archivo_procesos) == NULL) {
-            printf("Error: Fin de archivo inesperado. Faltan datos para el proceso %d.\n", i + 1);
+        if (fgets(linea, LINEA_MAX, archivo_procesos) == NULL) {//va bajando en cada instrucción, linea se va actualizando
+            printf("Faltan datos para el proceso %d.\n", i + 1);
             fclose(archivo_procesos);
             return 1;
         }
@@ -110,7 +111,7 @@ int main() {
         if (sscanf(linea, "PID:%d, PC=%d, AX=%d, BX=%d, CX=%d, Quantum=%d",
                    &procesos[i].pid, &procesos[i].pc, &procesos[i].ax,
                    &procesos[i].bx, &procesos[i].cx, &procesos[i].quantum) != 6) {
-            printf("Error: Formato de datos invalido para el proceso %d.\n", i + 1);
+            printf("No estan todos los datos requeridos %d.\n", i + 1);
             fclose(archivo_procesos);
             return 1;
         }
@@ -119,15 +120,15 @@ int main() {
         sprintf(nombre_instrucciones, "%d.txt", procesos[i].pid);
         FILE *archivo_instrucciones = fopen(nombre_instrucciones, "r");
         if (archivo_instrucciones == NULL) {
-            printf("Error: No se pudo abrir el archivo de instrucciones %s\n", nombre_instrucciones);
+            printf("No se pudo abrir el archivo de instrucciones %s\n", nombre_instrucciones);
             fclose(archivo_procesos);
             return 1;
         }
 
         procesos[i].num_instrucciones = 0;
-        while (fgets(linea, LINEA_MAX, archivo_instrucciones) != NULL) {
-            linea[strcspn(linea, "\n")] = 0;
-            strcpy(procesos[i].instrucciones[procesos[i].num_instrucciones], linea);
+        while (fgets(linea, LINEA_MAX, archivo_instrucciones) != NULL) {//lo que hay en archivo de instrucciones se va guardando en linea
+            linea[strcspn(linea, "\n")] = 0; //elimina \n
+            strcpy(procesos[i].instrucciones[procesos[i].num_instrucciones], linea); //guardando la instruccion en el atributo del proceso
             procesos[i].num_instrucciones++;
         }
         fclose(archivo_instrucciones);
@@ -137,13 +138,12 @@ int main() {
     }
     fclose(archivo_procesos);
     
-    printf("--- Procesos cargados desde procesos.txt ---\n");
+    printf("Procesos:\n");
     for (i = 0; i < num_procesos; i++) {
         imprimir_proceso(procesos[i]);
     }
-    printf("----------------------------------\n\n");
 
-    printf("--- Simulacion del planificador Round Robin ---\n");
+    printf("--- Round Robin ---\n");
 
     int procesos_terminados = 0;
     int proceso_actual_idx = 0;
@@ -152,16 +152,16 @@ int main() {
     while (procesos_terminados < num_procesos) {
         int inicio_busqueda = proceso_actual_idx;
         while (strcmp(procesos[proceso_actual_idx].estado, "Terminado") == 0) {
-            proceso_actual_idx = (proceso_actual_idx + 1) % num_procesos;
-            if (proceso_actual_idx == inicio_busqueda) {
+            proceso_actual_idx = (proceso_actual_idx + 1) % num_procesos; //Con esto reiniciamos el ciclo y asignamos al indice
+            if (proceso_actual_idx == inicio_busqueda) {//para cuando se han recorrido todos los procesos
                 break;
             }
         }
         
-        Proceso *p = &procesos[proceso_actual_idx];
+        Proceso *p = &procesos[proceso_actual_idx]; //puntero direccion de memoria
 
-        if (strcmp(p->estado, "Terminado") != 0) {
-            printf("\n--- Tiempo de simulacion: %d, Proceso Activo: %d ---\n", tiempo_total, p->pid);
+        if (strcmp(p->estado, "Terminado") != 0) { //Cuando se reinicia el while de mas arriba queda un proceso terminado, esto lo evita
+            printf("\n--- Tiempo de simulacion: %d, Id proceso: %d ---\n", tiempo_total, p->pid);
             strcpy(p->estado, "Ejecutando");
             
             if (p->pc < p->num_instrucciones) {
@@ -170,7 +170,7 @@ int main() {
                 int pc_anterior = p->pc;
                 ejecutar_instruccion(p);
 
-                if (strncmp(p->instrucciones[pc_anterior], "JMP", 3) != 0) {
+                if (strncmp(p->instrucciones[pc_anterior], "JMP", 3) != 0) { //compara primeros 3 caracteres, la funcion jmp modifica pc internamente
                     p->pc++;
                 }
             }
