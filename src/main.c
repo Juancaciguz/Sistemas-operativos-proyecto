@@ -17,8 +17,8 @@ typedef struct {
     int num_instrucciones;
 } Proceso;
 
-void imprimir_proceso(Proceso p) {
-    printf("  PID: %d, Estado: %s, PC: %d, AX: %d, BX: %d, CX: %d\n",
+void imprimir_proceso(Proceso p, FILE *log_file) {
+    fprintf(log_file, "  PID: %d, Estado: %s, PC: %d, AX: %d, BX: %d, CX: %d\n",
            p.pid, p.estado, p.pc, p.ax, p.bx, p.cx);
 }
 
@@ -88,31 +88,41 @@ int main() {
     int i;
     char linea[LINEA_MAX];
 
-    FILE *archivo_procesos = fopen("procesos.txt", "r");
-    if (archivo_procesos == NULL) {
-        printf("No se puede abrir el archivo procesos.txt.\n");
+    FILE *log_file = fopen("simulacion.log", "w");
+    if (log_file == NULL) {
+        printf("Error: No se pudo abrir el archivo de log.\n");
         return 1;
     }
 
-    if (fgets(linea, LINEA_MAX, archivo_procesos) == NULL) { //aqui se esta guardando el numero de procesos, deberiamos ponerlo en otra parte
-        printf("Archivo vacio o no se puede leer la cantidad de procesos.\n");
+    FILE *archivo_procesos = fopen("procesos.txt", "r");
+    if (archivo_procesos == NULL) {
+        fprintf(log_file, "No se puede abrir el archivo procesos.txt.\n");
+        fclose(log_file);
+        return 1;
+    }
+
+    if (fgets(linea, LINEA_MAX, archivo_procesos) == NULL) {
+        fprintf(log_file, "Archivo vacio o no se puede leer la cantidad de procesos.\n");
         fclose(archivo_procesos);
+        fclose(log_file);
         return 1;
     }
     num_procesos = atoi(linea);
 
     for (i = 0; i < num_procesos; i++) {
-        if (fgets(linea, LINEA_MAX, archivo_procesos) == NULL) {//va bajando en cada instrucción, linea se va actualizando
-            printf("Faltan datos para el proceso %d.\n", i + 1);
+        if (fgets(linea, LINEA_MAX, archivo_procesos) == NULL) {
+            fprintf(log_file, "Faltan datos para el proceso %d.\n", i + 1);
             fclose(archivo_procesos);
+            fclose(log_file);
             return 1;
         }
 
         if (sscanf(linea, "PID:%d, PC=%d, AX=%d, BX=%d, CX=%d, Quantum=%d",
                    &procesos[i].pid, &procesos[i].pc, &procesos[i].ax,
                    &procesos[i].bx, &procesos[i].cx, &procesos[i].quantum) != 6) {
-            printf("No estan todos los datos requeridos %d.\n", i + 1);
+            fprintf(log_file, "No estan todos los datos requeridos %d.\n", i + 1);
             fclose(archivo_procesos);
+            fclose(log_file);
             return 1;
         }
 
@@ -120,15 +130,16 @@ int main() {
         sprintf(nombre_instrucciones, "%d.txt", procesos[i].pid);
         FILE *archivo_instrucciones = fopen(nombre_instrucciones, "r");
         if (archivo_instrucciones == NULL) {
-            printf("No se pudo abrir el archivo de instrucciones %s\n", nombre_instrucciones);
+            fprintf(log_file, "No se pudo abrir el archivo de instrucciones %s\n", nombre_instrucciones);
             fclose(archivo_procesos);
+            fclose(log_file);
             return 1;
         }
 
         procesos[i].num_instrucciones = 0;
-        while (fgets(linea, LINEA_MAX, archivo_instrucciones) != NULL) {//lo que hay en archivo de instrucciones se va guardando en linea
-            linea[strcspn(linea, "\n")] = 0; //elimina \n
-            strcpy(procesos[i].instrucciones[procesos[i].num_instrucciones], linea); //guardando la instruccion en el atributo del proceso
+        while (fgets(linea, LINEA_MAX, archivo_instrucciones) != NULL) {
+            linea[strcspn(linea, "\n")] = 0;
+            strcpy(procesos[i].instrucciones[procesos[i].num_instrucciones], linea);
             procesos[i].num_instrucciones++;
         }
         fclose(archivo_instrucciones);
@@ -138,12 +149,12 @@ int main() {
     }
     fclose(archivo_procesos);
     
-    printf("Procesos:\n");
+    fprintf(log_file, "Procesos:\n");
     for (i = 0; i < num_procesos; i++) {
-        imprimir_proceso(procesos[i]);
+        imprimir_proceso(procesos[i], log_file);
     }
 
-    printf("--- Round Robin ---\n");
+    fprintf(log_file, "--- Round Robin ---\n");
 
     int procesos_terminados = 0;
     int proceso_actual_idx = 0;
@@ -152,42 +163,42 @@ int main() {
     while (procesos_terminados < num_procesos) {
         int inicio_busqueda = proceso_actual_idx;
         while (strcmp(procesos[proceso_actual_idx].estado, "Terminado") == 0) {
-            proceso_actual_idx = (proceso_actual_idx + 1) % num_procesos; //Con esto reiniciamos el ciclo y asignamos al indice
-            if (proceso_actual_idx == inicio_busqueda) {//para cuando se han recorrido todos los procesos
+            proceso_actual_idx = (proceso_actual_idx + 1) % num_procesos;
+            if (proceso_actual_idx == inicio_busqueda) {
                 break;
             }
         }
         
-        Proceso *p = &procesos[proceso_actual_idx]; //puntero direccion de memoria
+        Proceso *p = &procesos[proceso_actual_idx];
 
-        if (strcmp(p->estado, "Terminado") != 0) { //Cuando se reinicia el while de mas arriba queda un proceso terminado, esto lo evita
-            printf("\n--- Tiempo de simulacion: %d, Id proceso: %d ---\n", tiempo_total, p->pid);
+        if (strcmp(p->estado, "Terminado") != 0) {
+            fprintf(log_file, "\n--- Tiempo de simulacion: %d, Id proceso: %d ---\n", tiempo_total, p->pid);
             strcpy(p->estado, "Ejecutando");
             
             if (p->pc < p->num_instrucciones) {
-                printf("  > Ejecutando instruccion: %s\n", p->instrucciones[p->pc]);
+                fprintf(log_file, "  > Ejecutando instruccion: %s\n", p->instrucciones[p->pc]);
                 
                 int pc_anterior = p->pc;
                 ejecutar_instruccion(p);
 
-                if (strncmp(p->instrucciones[pc_anterior], "JMP", 3) != 0) { //compara primeros 3 caracteres, la funcion jmp modifica pc internamente
+                if (strncmp(p->instrucciones[pc_anterior], "JMP", 3) != 0) {
                     p->pc++;
                 }
             }
             
             p->tiempo_restante--;
             
-            printf("  > Estado despues de la instruccion: ");
-            imprimir_proceso(*p);
+            fprintf(log_file, "  > Estado despues de la instruccion: ");
+            imprimir_proceso(*p, log_file);
 
             if (p->pc >= p->num_instrucciones) {
                 strcpy(p->estado, "Terminado");
                 procesos_terminados++;
-                printf("\nProceso %d ha terminado su ejecucion.\n", p->pid);
+                fprintf(log_file, "\nProceso %d ha terminado su ejecucion.\n", p->pid);
             }
             else if (p->tiempo_restante == 0) {
-                printf("\n[Cambio de contexto]\n");
-                printf("Guardando estado de Proceso %d: PC=%d, AX=%d, BX=%d, CX=%d\n", p->pid, p->pc, p->ax, p->bx, p->cx);
+                fprintf(log_file, "\n[Cambio de contexto]\n");
+                fprintf(log_file, "Guardando estado de Proceso %d: PC=%d, AX=%d, BX=%d, CX=%d\n", p->pid, p->pc, p->ax, p->bx, p->cx);
                 
                 p->tiempo_restante = p->quantum;
                 strcpy(p->estado, "Listo");
@@ -199,7 +210,7 @@ int main() {
                 
                 if (strcmp(procesos[siguiente_proceso_idx].estado, "Terminado") != 0) {
                     Proceso* siguiente_proceso = &procesos[siguiente_proceso_idx];
-                    printf("Cargando estado de Proceso %d: PC=%d, AX=%d, BX=%d, CX=%d\n",
+                    fprintf(log_file, "Cargando estado de Proceso %d: PC=%d, AX=%d, BX=%d, CX=%d\n",
                            siguiente_proceso->pid, siguiente_proceso->pc, siguiente_proceso->ax, siguiente_proceso->bx, siguiente_proceso->cx);
                 }
             }
@@ -209,6 +220,7 @@ int main() {
         tiempo_total++;
     }
 
-    printf("\n--- Simulacion finalizada: Todos los procesos han terminado ---\n");
+    fprintf(log_file, "\n--- Simulacion finalizada: Todos los procesos han terminado ---\n");
+    fclose(log_file);
     return 0;
 }
