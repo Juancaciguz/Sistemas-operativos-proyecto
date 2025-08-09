@@ -2,9 +2,10 @@
 
 Integrantes : Juan Carlos Citelly Guzmán y Juan Manuel Zapata Olaya
 
-Requisitos:
-
-WSL (Windows Subsystem for Linux) o una distribución nativa de Linux. Asegúrese de tener un compilador de C/C++ instalado, como gcc
+### Requisitos:
+1. Sistema operativo: Linux o Windows con WSL.
+2. Compilador: gcc
+3. Herramientas: Terminal o consola para compilar y ejecutar.
 
 Tanto los archivos proceso.txt y las instrucciones deben estar fuera del folder src:
 
