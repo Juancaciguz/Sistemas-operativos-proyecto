@@ -211,4 +211,5 @@ int main() {
 
     printf("\n--- Simulacion finalizada: Todos los procesos han terminado ---\n");
     return 0;
+    
 }
