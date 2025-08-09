@@ -21,6 +21,3 @@ Pasos para compilar:
 ### Ejemplo instrucciones
 
 <img width="265" height="255" alt="image" src="https://github.com/user-attachments/assets/d6820e8d-4290-4e15-93a7-c953f96e87fd" />
-
-ADD AX,11
-NOP
