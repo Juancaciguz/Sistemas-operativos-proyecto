@@ -15,21 +15,12 @@ Pasos para compilar:
 4. Visualizar en consola los resultados
 
 ### Ejemplo de procesos
+<img width="602" height="248" alt="image" src="https://github.com/user-attachments/assets/d99fd01d-16f5-40e6-8add-5536635befa5" />
 
-5
-PID:1, PC=0, AX=0, BX=1, CX=2, Quantum=3
-PID:2, PC=0, AX=1, BX=3, CX=4, Quantum=2
-PID:3, PC=0, AX=2, BX=5, CX=6, Quantum=1
-PID:4, PC=0, AX=3, BX=7, CX=8, Quantum=2
-PID:5, PC=0, AX=4, BX=9, CX=10, Quantum=3
 
 ### Ejemplo instrucciones
 
-ADD AX,10
-MUL BX,2
-ADD AX,3
-SUB AX,CX
-INC AX
-NOP
+<img width="265" height="255" alt="image" src="https://github.com/user-attachments/assets/d6820e8d-4290-4e15-93a7-c953f96e87fd" />
+
 ADD AX,11
 NOP
