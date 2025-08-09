@@ -6,6 +6,10 @@ Requisitos:
 
 WSL (Windows Subsystem for Linux) o una distribución nativa de Linux. Asegúrese de tener un compilador de C/C++ instalado, como gcc
 
+Tanto los archivos proceso.txt y las instrucciones deben estar fuera del folder src:
+<img width="264" height="425" alt="image" src="https://github.com/user-attachments/assets/943a9139-ae79-4974-a9f6-bd2c9f3a3d5f" />
+
+
 Formato del nombre del proceso: procesos.txt
 
 Formato del nombre de instrucción: "número".txt
