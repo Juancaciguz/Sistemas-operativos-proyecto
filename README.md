@@ -6,6 +6,10 @@ Requisitos:
 
 WSL (Windows Subsystem for Linux) o una distribución nativa de Linux. Asegúrese de tener un compilador de C/C++ instalado, como gcc
 
+Formato del nombre del proceso: procesos.txt
+
+Formato del nombre de instrucción: "número".txt
+Ejemplo: 1.txt
 
 Pasos para compilar:
 
